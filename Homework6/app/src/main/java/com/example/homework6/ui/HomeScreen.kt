@@ -1,5 +1,11 @@
 package com.example.homework6.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,7 +23,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.homework6.R
@@ -52,7 +60,7 @@ fun HomeScreen(navController: NavHostController, vm: ProfileViewModel) {
                         navController.navigate("profile/true")
                     }) {
                         Image(
-                            painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_launcher_foreground),
+                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
                             contentDescription = "My avatar",
                             modifier = Modifier
                                 .size(36.dp)
@@ -86,14 +94,52 @@ fun HomeScreen(navController: NavHostController, vm: ProfileViewModel) {
                 Divider(modifier = Modifier.padding(bottom = 8.dp))
             }
 
-            items(state.posts, key = { it.id }) { post ->
-                PostItem(
-                    post = post,
-                    onLike = { vm.togglePostLike(post.id) },
-                    onComment = { text -> vm.addComment(post.id, text) }
-                )
+            if (state.isLoading) {
+                items(5) {
+                    ShimmerPostItem()
+                }
+            } else {
+                items(state.posts, key = { it.id }) { post ->
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = slideInVertically(
+                            initialOffsetY = { 100 }
+                        ) + fadeIn()
+                    ) {
+                        PostItem(
+                            post = post,
+                            onLike = { vm.togglePostLike(post.id) },
+                            onComment = { text -> vm.addComment(post.id, text) }
+                        )
+                    }
+                }
             }
+        }
+    }
+}
 
+@Composable
+fun ShimmerPostItem() {
+    val brush = shimmerBrush(showShimmer = true)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(180.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(brush))
+                Spacer(Modifier.width(8.dp))
+                Box(modifier = Modifier.height(20.dp).fillMaxWidth(0.4f).background(brush))
+            }
+            Spacer(Modifier.height(16.dp))
+            Box(modifier = Modifier.height(16.dp).fillMaxWidth().background(brush))
+            Spacer(Modifier.height(8.dp))
+            Box(modifier = Modifier.height(16.dp).fillMaxWidth(0.8f).background(brush))
         }
     }
 }
@@ -105,6 +151,15 @@ fun PostItem(
     onComment: (String) -> Unit
 ) {
     var commentText by remember { mutableStateOf("") }
+
+    val likeScale by animateFloatAsState(
+        targetValue = if (post.isLiked) 1.2f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioHighBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "like_spring"
+    )
 
     Card(
         elevation = CardDefaults.cardElevation(2.dp),
@@ -132,7 +187,8 @@ fun PostItem(
                     Icon(
                         imageVector = if (post.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Like",
-                        tint = if (post.isLiked) Color.Red else Color.Gray
+                        tint = if (post.isLiked) Color.Red else Color.Gray,
+                        modifier = Modifier.scale(likeScale)
                     )
                 }
                 Text("${post.likes} Likes")

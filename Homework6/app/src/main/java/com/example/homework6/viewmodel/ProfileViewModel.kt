@@ -6,6 +6,7 @@ import com.example.homework6.data.local.FollowerEntity
 import com.example.homework6.data.local.PostEntity
 import com.example.homework6.data.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,6 +29,7 @@ data class Follower(
 )
 
 data class ProfileUiState(
+    val isLoading: Boolean = false,
     val name: String = "MaoZeDong",
     val bio: String = "Android learner, Compose beginner",
     val followerCount: Int = 10,
@@ -154,11 +156,15 @@ class ProfileViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
+            _ui.update { it.copy(isLoading = true) }
             try {
+                delay(1000)
                 repo.refreshProfiles()
                 sendEvent(UiEvent.ShowSnackbar("Refreshed"))
             } catch (e: Exception) {
                 sendEvent(UiEvent.ShowSnackbar("Refresh failed: ${e.message ?: "unknown"}"))
+            } finally {
+                _ui.update { it.copy(isLoading = false) }
             }
         }
     }
